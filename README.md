@@ -39,7 +39,7 @@ The application was developed using **HTML**, **CSS**, **JavaScript**, and **Sup
 
 ### Home Page
 
-![Home](screenshots/Welcome.png)
+![Home](screenshots/Welcomepage.png)
 
 ### Login Page
 
@@ -51,16 +51,36 @@ The application was developed using **HTML**, **CSS**, **JavaScript**, and **Sup
 
 ### Learner Dashboard
 
-![Learner Dashboard](screenshots/learner dashboard.png)
+![Learner Dashboard](screenshots/learnerdashboard.png)
 
 
 ### Teacher Dashboard
 
-![Teacher Dashboard](screenshots/teacher dashboard.png)
+![Teacher Dashboard](screenshots/teacherdashboard.png)
+
+### Quiz management
+
+![Quiz management](screenshots/quizmanagement.png)
 
 ### Quiz Page
 
-![Quiz](screenshots/quiz.png)
+![Quiz](screenshots/quizpage.png)
+
+### Quiz scores
+
+![Quiz scores](screenshots/quizscores.png)
+
+### Lessons
+
+![lessons](screenshots/lessons.png)
+
+### Announcement
+
+![announcement](screenshots/announcementpage.png)
+
+### Announcement page
+
+![announcementpage](screenshots/announcementpage.png)
 
 
 
