@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Messages - Learner</title>
+  <link rel="stylesheet" href="login.css">
+  <style>
+    .messages-list { max-width: 800px; margin: 0 auto; }
+    .message-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .message-header { font-weight: bold; margin-bottom: 8px; }
+    .message-type { color: #007bff; }
+    .answer { margin-left: 20px; border-left: 2px solid #007bff; padding-left: 10px; }
+    .post-form { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+    .post-form textarea { width: 100%; margin-bottom: 10px; }
+  </style>
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html"><span>Dashboard</span></a>
+      <a href="progress-learner.html"><span>Progress</span></a>
+      <a href="quiz-learner.html"><span>Quiz</span></a>
+      <a href="papers-learner.html"><span>Papers</span></a>
+      <a href="videos-learner.html"><span>Videos</span></a>
+      <a href="textbooks-learner.html"><span>Textbooks</span></a>
+      <a href="messages-learner.html" class="active"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Messages & Announcements</h2>
+      <p>View announcements and ask questions to your teachers.</p>
+
+      <div class="post-form">
+        <h3>Post a Question</h3>
+        <textarea id="questionInput" placeholder="Ask your question here..." rows="4"></textarea>
+        <button id="postQuestion">Post Question</button>
+      </div>
+      <div class="messages-list" id="messagesList"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  async function getUserName(userId) {
+    let { data, error } = await supabase.from('teachers').select('first_name, last_name').eq('id', userId).maybeSingle();
+    if (data) return `${data.first_name} ${data.last_name} (Teacher)`;
+    ({ data, error } = await supabase.from('learners').select('first_name, last_name').eq('id', userId).maybeSingle());
+    if (data) return `${data.first_name} ${data.last_name} (Learner)`;
+    return 'Unknown User';
+  }
+
+  async function loadMessages() {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    console.log('loadMessages result', { data, error });
+
+    if (error) {
+      console.error('Error loading messages:', error);
+      return;
+    }
+
+    const messagesList = document.getElementById('messagesList');
+    messagesList.innerHTML = '';
+
+    // Group messages by parent_message_id
+    const messageMap = {};
+    const rootMessages = [];
+
+    data.forEach(msg => {
+      if (msg.parent_message_id) {
+        if (!messageMap[msg.parent_message_id]) messageMap[msg.parent_message_id] = [];
+        messageMap[msg.parent_message_id].push(msg);
+      } else {
+        rootMessages.push(msg);
+      }
+    });
+
+    rootMessages.forEach(async msg => {
+      const card = document.createElement('div');
+      card.className = 'message-card';
+
+      const senderName = await getUserName(msg.sender_id);
+
+      card.innerHTML = `
+        <div class="message-header">
+          <span class="message-type">${(msg.message_type||'').toUpperCase()}</span> by ${senderName} - ${new Date(msg.created_at).toLocaleString()}
+        </div>
+        <div>${msg.content}</div>
+      `;
+
+      // Add answers if any
+      if (messageMap[msg.message_id]) {
+        for (const answer of messageMap[msg.message_id]) {
+          const answerDiv = document.createElement('div');
+          answerDiv.className = 'answer';
+          const answerSender = await getUserName(answer.sender_id);
+          answerDiv.innerHTML = `
+            <strong>Answer by ${answerSender}:</strong> ${answer.content}
+            <br><small>${new Date(answer.created_at).toLocaleString()}</small>
+          `;
+          card.appendChild(answerDiv);
+        }
+      }
+
+      messagesList.appendChild(card);
+    });
+  }
+
+  document.getElementById('postQuestion').addEventListener('click', async () => {
+    const input = document.getElementById('questionInput');
+    const question = input.value.trim();
+    if (!question) return;
+
+    const { data: userData, error: authError } = await supabase.auth.getUser();
+    if (authError || !userData?.user) {
+      console.error('Auth error while posting question:', authError);
+      alert('Unable to post question because you are not signed in.');
+      return;
+    }
+
+    const questionTitle = question.length > 40 ? question.slice(0, 40) + '...' : question;
+    const { error } = await supabase.from('messages').insert([{
+      sender_id: userData.user.id,
+      sender_type: 'learner',
+      recipient_id: null,
+      recipient_type: null,
+      title: questionTitle,
+      content: question,
+      message_type: 'question',
+      parent_message_id: null
+    }] );
+
+    if (error) {
+      console.error('Error posting question:', error);
+      alert('Failed to post question: ' + (error.message || 'Unknown error'));
+      return;
+    }
+
+    input.value = '';
+    loadMessages();
+  });
+
+  loadMessages();
+</script>
+</body>
+</html>

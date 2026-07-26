@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Video Lessons - Learner</title>
+  <link rel="stylesheet" href="login.css">
+  <style>
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+    .video-card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .video-card video { width: 100%; border-radius: 4px; margin-bottom: 10px; }
+    .video-info { margin-bottom: 10px; }
+    .video-info h4 { margin: 0 0 8px 0; color: #333; }
+    .video-info p { margin: 0 0 8px 0; color: #666; font-size: 14px; }
+    .video-meta { font-size: 12px; color: #888; }
+    .subject-filter { margin-bottom: 20px; }
+    .subject-filter select { padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+    .no-videos { text-align: center; padding: 40px; color: #666; }
+    .video-card a { color: #007bff; text-decoration: none; }
+    .video-card a:hover { text-decoration: underline; }
+    .external-video-badge { display: inline-block; margin-top: 8px; color: #007bff; font-weight: 600; }
+  </style>
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html"><span>Dashboard</span></a>
+      <a href="progress-learner.html"><span>Progress</span></a>
+      <a href="quiz-learner.html"><span>Quiz</span></a>
+      <a href="papers-learner.html"><span>Papers</span></a>
+      <a href="videos-learner.html" class="active"><span>Videos</span></a>
+      <a href="textbooks-learner.html"><span>Textbooks</span></a>
+      <a href="messages-learner.html"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Video Lessons</h2>
+      <p>Watch teaching videos to enhance your learning.</p>
+
+      <div class="subject-filter">
+        <label for="subjectFilter">Filter by Subject: </label>
+        <select id="subjectFilter">
+          <option value="all" selected>All Subjects</option>
+          <option value="English Literature">English Literature</option>
+          <option value="Grammar">Grammar</option>
+          <option value="Writing">Writing</option>
+          <option value="Reading Comprehension">Reading Comprehension</option>
+          <option value="Poetry">Poetry</option>
+        </select>
+      </div>
+
+      <div id="videosGrid" class="video-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  let allVideos = [];
+
+  const externalVideoResources = [
+    {
+      subject: 'Grammar',
+      title: 'Grammar Video: English Grammar Lesson',
+      description: 'Watch this helpful grammar lesson on YouTube.',
+      url: 'https://www.youtube.com/watch?v=SceDmiBEESI'
+    },
+    {
+      subject: 'English Literature',
+      title: 'Literature Video: Classic Literature Lesson',
+      description: 'Watch this helpful literature lesson on YouTube.',
+      url: 'https://www.youtube.com/watch?v=qvbMNIViMq4'
+    },
+    {
+      subject: 'Writing',
+      title: 'Writing Video: Strong Writing Skills',
+      description: 'Watch this helpful writing lesson on YouTube.',
+      url: 'https://www.youtube.com/watch?v=o_KXAPV601k'
+    },
+    {
+      subject: 'Poetry',
+      title: 'Poetry Video: Poetry Reading and Analysis',
+      description: 'Watch this helpful poetry lesson on YouTube.',
+      url: 'https://www.youtube.com/watch?v=ImBO35GznsY'
+    },
+    {
+      subject: 'Reading Comprehension',
+      title: 'Reading Comprehension Video: Reading Strategies and Practice',
+      description: 'Watch this helpful reading comprehension lesson on YouTube.',
+      url: 'https://www.youtube.com/watch?v=W7BW9gv_OkU'
+    }
+  ];
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  async function loadVideos() {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+
+    // Get enrolled class IDs
+    const { data: enrollments, error: enrollError } = await supabase
+      .from('class_enrollments')
+      .select('class_id')
+      .eq('learner_id', user.id);
+    if (enrollError) {
+      console.error('Error loading enrollments:', enrollError);
+      return;
+    }
+
+    const enrolledClassIds = enrollments.map(e => e.class_id);
+
+    if (enrolledClassIds.length === 0) {
+      const videosGrid = document.getElementById('videosGrid');
+      videosGrid.innerHTML = '<div class="no-videos"><h3>No videos available</h3><p>You need to join a class first to access videos.</p></div>';
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('is_available', true)
+      .in('class_id', enrolledClassIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading videos:', error);
+      return;
+    }
+
+    allVideos = data;
+    displayVideos(allVideos, 'all');
+  }
+
+  function displayVideos(videos, filter = 'all') {
+    const videosGrid = document.getElementById('videosGrid');
+    videosGrid.innerHTML = '';
+
+    if (videos.length === 0) {
+      videosGrid.innerHTML = '<div class="no-videos"><h3>No videos available</h3><p>Check back later for new video lessons.</p></div>';
+      if (!filter || filter === 'all') {
+        appendAllExternalVideoCards(videosGrid);
+      } else {
+        appendExternalVideoCard(videosGrid, filter);
+      }
+      return;
+    }
+
+    videos.forEach(video => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+
+      card.innerHTML = `
+        <video controls preload="metadata">
+          <source src="${video.url}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-info">
+          <h4>${video.title}</h4>
+          <p>${video.description || 'No description available'}</p>
+          <div class="video-meta">
+            <strong>Uploaded:</strong> ${new Date(video.created_at).toLocaleDateString()}
+          </div>
+        </div>
+      `;
+
+      videosGrid.appendChild(card);
+    });
+
+    if (!filter || filter === 'all') {
+      appendAllExternalVideoCards(videosGrid);
+    } else {
+      appendExternalVideoCard(videosGrid, filter);
+    }
+  }
+
+  function appendAllExternalVideoCards(container) {
+    externalVideoResources.forEach(resource => appendExternalVideoCard(container, resource.subject));
+  }
+
+  function appendExternalVideoCard(container, filter) {
+    const card = document.createElement('div');
+    card.className = 'video-card';
+    const normalizedFilter = (filter || '').trim().toLowerCase();
+    const match = externalVideoResources.find(resource => resource.subject.toLowerCase() === normalizedFilter);
+    const resource = match || externalVideoResources.find(r => r.subject.toLowerCase() === 'grammar');
+
+    card.innerHTML = `
+      <div class="video-info">
+        <h4>${resource.title}</h4>
+        <p>${resource.description}</p>
+        <a href="${resource.url}" target="_blank" rel="noreferrer noopener">Open ${resource.subject.toLowerCase()} video on YouTube</a>
+        <div class="external-video-badge">External resource</div>
+      </div>
+    `;
+    container.appendChild(card);
+  }
+
+  function filterVideos() {
+    const subjectFilter = document.getElementById('subjectFilter').value;
+    let filteredVideos = allVideos;
+
+    if (subjectFilter && subjectFilter !== 'all') {
+      filteredVideos = allVideos.filter(video => video.subject === subjectFilter);
+    }
+
+    displayVideos(filteredVideos, subjectFilter);
+  }
+
+  const subjectFilterElement = document.getElementById('subjectFilter');
+  subjectFilterElement.value = 'all';
+  subjectFilterElement.addEventListener('change', filterVideos);
+
+  window.addEventListener('pageshow', () => {
+    subjectFilterElement.value = 'all';
+    filterVideos();
+  });
+
+  loadVideos();
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teacher Progress - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Teacher Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-teacher.html"><span>Dashboard</span></a>
+      <a href="progress-teacher.html" class="active"><span>Progress</span></a>
+      <a href="quiz-teacher.html"><span>Quiz</span></a>
+      <a href="papers-teacher.html"><span>Papers</span></a>
+      <a href="videos-teacher.html"><span>Videos</span></a>
+      <a href="textbooks-teacher.html"><span>Textbooks</span></a>
+      <a href="messages-teacher.html"><span>Messages</span></a>
+      <a href="settings-teacher.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Learner Progress</h2>
+      <p>Monitor the progress of your learners across quizzes and classes.</p>
+
+      <div class="table-card">
+        <h3>Learner Quiz Performance</h3>
+        <div id="progressList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  async function loadProgress() {
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+
+      const { data: quizzes, error: quizzesError } = await supabase
+        .from('quizzes')
+        .select('quiz_id')
+        .eq('teacher_id', user.id);
+      if (quizzesError) throw quizzesError;
+
+      const quizIds = quizzes ? quizzes.map(q => q.quiz_id) : [];
+      const progressList = document.getElementById('progressList');
+      progressList.innerHTML = '';
+
+      if (!quizIds.length) {
+        progressList.innerHTML = `<div class="table-card"><strong>No quiz data yet</strong><p>Create quizzes and learners will see their attempts here once puzzles are completed.</p></div>`;
+        return;
+      }
+
+      const { data: attempts, error: attemptsError } = await supabase
+        .from('quiz_attempts')
+        .select('*, learners(first_name,last_name,email), quizzes(title,description,pass_threshold)')
+        .in('quiz_id', quizIds)
+        .order('submitted_at', { ascending: false });
+      if (attemptsError) throw attemptsError;
+
+      if (!attempts || attempts.length === 0) {
+        progressList.innerHTML = `<div class="table-card"><strong>No quiz attempts yet</strong><p>Learner submissions will appear here once quizzes are taken.</p></div>`;
+        return;
+      }
+
+      attempts.forEach(attempt => {
+        const card = document.createElement('div');
+        card.className = 'table-card';
+        const totalScore = attempt.total_score || 0;
+        const percentage = totalScore ? Math.round((attempt.score || 0) / totalScore * 100) : 'N/A';
+        const passThreshold = attempt.quizzes?.pass_threshold ?? 50;
+        const passed = totalScore ? (attempt.score || 0) >= Math.round((passThreshold / 100) * totalScore) : false;
+        card.innerHTML = `
+          <strong>${attempt.learners?.first_name || 'Learner'} ${attempt.learners?.last_name || ''}</strong>
+          <p><strong>Email:</strong> ${attempt.learners?.email || 'Unknown'}</p>
+          <p><strong>Quiz:</strong> ${attempt.quizzes?.title || 'Unknown Quiz'}</p>
+          <p><strong>Score:</strong> ${attempt.score || 0}/${totalScore}</p>
+          <p><strong>Percentage:</strong> ${percentage}%</p>
+          <p><strong>Status:</strong> <span style="${passed ? 'color: green;' : 'color: red;'}">${passed ? 'Passed ✅' : 'Failed ❌'}</span></p>
+          <p><strong>Submitted:</strong> ${attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleDateString() : 'Not submitted'}</p>
+        `;
+        progressList.appendChild(card);
+      });
+    } catch (error) {
+      console.error('Error loading progress:', error);
+      document.getElementById('progressList').innerHTML = `<div class="table-card"><strong>Error loading progress</strong><p>${error.message}</p></div>`;
+    }
+  }
+
+  loadProgress();
+</script>
+</body>
+</html>

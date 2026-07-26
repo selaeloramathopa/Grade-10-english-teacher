@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teacher Settings - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Teacher Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-teacher.html"><span>Dashboard</span></a>
+      <a href="progress-teacher.html"><span>Progress</span></a>
+      <a href="quiz-teacher.html"><span>Quiz</span></a>
+      <a href="papers-teacher.html"><span>Papers</span></a>
+      <a href="videos-teacher.html"><span>Videos</span></a>
+      <a href="textbooks-teacher.html"><span>Textbooks</span></a>
+      <a href="messages-teacher.html"><span>Messages</span></a>
+      <a href="settings-teacher.html" class="active"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Settings</h2>
+      <p>Manage your teacher profile details here.</p>
+
+      <form id="settingsForm" class="table-card">
+        <label>First Name</label>
+        <input type="text" id="firstName" placeholder="First Name" required />
+        <label>Last Name</label>
+        <input type="text" id="lastName" placeholder="Last Name" required />
+        <label>Email</label>
+        <input type="email" id="email" placeholder="Email" required />
+        <label>New Password</label>
+        <input type="password" id="password" placeholder="New Password" />
+        <label>Confirm New Password</label>
+        <input type="password" id="confirmPassword" placeholder="Confirm New Password" />
+        <button type="submit">Save Changes</button>
+        <div class="message" id="message"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  async function loadProfile() {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
+      document.getElementById('message').textContent = 'Unable to load profile.';
+      return;
+    }
+
+    const userId = userData.user.id;
+    const { data, error } = await supabase.from('teachers').select('first_name,last_name,email').eq('id', userId).single();
+    if (error) {
+      document.getElementById('message').textContent = 'Unable to load profile details.';
+      return;
+    }
+
+    document.getElementById('firstName').value = data.first_name;
+    document.getElementById('lastName').value = data.last_name;
+    document.getElementById('email').value = data.email;
+  }
+
+  document.getElementById('settingsForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const messageDiv = document.getElementById('message');
+
+    if (!firstName || !lastName || !email) {
+      messageDiv.textContent = 'Please fill in all required fields.';
+      return;
+    }
+
+    if (password && password !== confirmPassword) {
+      messageDiv.textContent = 'New password and confirm password must match.';
+      return;
+    }
+
+    messageDiv.textContent = 'Saving...';
+
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) throw new Error('Unable to get user session.');
+      const userId = userData.user.id;
+
+      if (email !== userData.user.email) {
+        const { error: emailError } = await supabase.auth.updateUser({ email });
+        if (emailError) throw emailError;
+      }
+
+      if (password) {
+        const { error: passError } = await supabase.auth.updateUser({ password });
+        if (passError) throw passError;
+      }
+
+      const { error } = await supabase.from('teachers').update({
+        first_name: firstName,
+        last_name: lastName,
+        email: email
+      }).eq('id', userId);
+
+      if (error) throw error;
+
+      messageDiv.textContent = 'Profile updated successfully.';
+    } catch (error) {
+      messageDiv.textContent = 'Error updating profile: ' + (error.message || error);
+    }
+  });
+
+  loadProfile();
+</script>
+</body>
+</html>

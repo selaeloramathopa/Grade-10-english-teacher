@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Learner Quiz - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+  <style>
+    .quiz-preview-card {
+      background: white;
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .quiz-preview-card.locked {
+      border-left-color: #ffc107;
+      background: #fffbf0;
+    }
+    .quiz-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status-ready {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status-locked {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .status-completed {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+    .prerequisites-section {
+      background: #fff3cd;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #ffc107;
+    }
+    .prereq-video {
+      background: white;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .prereq-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .prereq-status.completed {
+      background: #d4edda;
+      color: #155724;
+    }
+    .prereq-status.pending {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .btn-watch-video {
+      background: #007bff;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-watch-video:hover {
+      background: #0056b3;
+    }
+    .btn-take-quiz {
+      background: #28a745;
+      color: white;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .btn-take-quiz:hover {
+      background: #218838;
+    }
+    .btn-take-quiz:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html"><span>Dashboard</span></a>
+      <a href="progress-learner.html"><span>Progress</span></a>
+      <a href="quiz-learner.html" class="active"><span>Quiz</span></a>
+      <a href="papers-learner.html"><span>Papers</span></a>
+      <a href="videos-learner.html"><span>Videos</span></a>
+      <a href="textbooks-learner.html"><span>Textbooks</span></a>
+      <a href="messages-learner.html"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Available Quizzes</h2>
+      <p>Complete required videos, then take quizzes to test your knowledge.</p>
+
+      <div id="quizList" class="vertical-list"></div>
+
+      <div id="quizTaking" style="display: none;">
+        <h2 id="quizTitle"></h2>
+        <p id="quizDescription"></p>
+        <div id="questions"></div>
+        <button id="submitQuiz" style="display: none;">Submit Quiz</button>
+      </div>
+
+      <div id="quizResults" style="display: none;">
+        <h2>Quiz Results</h2>
+        <div class="table-card">
+          <h3 id="resultTitle"></h3>
+          <p><strong>Score:</strong> <span id="score"></span></p>
+          <p><strong>Percentage:</strong> <span id="percentage"></span></p>
+          <div id="detailedResults"></div>
+          <button id="backToQuizzes">Back to Quizzes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  let currentQuiz = null;
+  let currentQuizQuestions = [];
+  let userAnswers = [];
+
+  // Sidebar functionality
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  // Check video prerequisites for quiz
+  async function checkVideoPrerequisites(quizId, userId) {
+    try {
+      const { data: prerequisites, error: prereqError } = await supabase
+        .from('video_quiz_prerequisites')
+        .select('video_id, class_videos(video_title, topic)')
+        .eq('quiz_id', quizId);
+
+      if (prereqError) throw prereqError;
+      if (!prerequisites || prerequisites.length === 0) return { completed: true, videos: [] };
+
+      // Check watch progress for each prerequisite video
+      const videoIds = prerequisites.map(p => p.video_id);
+      const { data: progress, error: progressError } = await supabase
+        .from('video_watch_progress')
+        .select('*')
+        .eq('learner_id', userId)
+        .in('video_id', videoIds);
+
+      if (progressError) throw progressError;
+
+      const progressMap = {};
+      if (progress) {
+        progress.forEach(p => {
+          progressMap[p.video_id] = p;
+        });
+      }
+
+      const videoStatus = prerequisites.map(p => ({
+        videoId: p.video_id,
+        videoTitle: p.class_videos.video_title,
+        topic: p.class_videos.topic,
+        completed: progressMap[p.video_id]?.is_completed || false,
+        percentageWatched: progressMap[p.video_id]?.percentage_watched || 0
+      }));
+
+      const allCompleted = videoStatus.every(v => v.completed);
+
+      return {
+        completed: allCompleted,
+        videos: videoStatus
+      };
+    } catch (error) {
+      console.error('Error checking prerequisites:', error);
+      return { completed: false, videos: [] };
+    }
+  }
+
+  // Load available quizzes
+  async function loadQuizzes() {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+
+    try {
+      const { data: quizzes, error: quizError } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false });
+
+      if (quizError) throw quizError;
+
+      const quizList = document.getElementById('quizList');
+      quizList.innerHTML = '';
+
+      if (!quizzes || quizzes.length === 0) {
+        quizList.innerHTML = '<p style="color: #999;">No quizzes available yet.</p>';
+        return;
+      }
+
+      for (const quiz of quizzes) {
+        const card = document.createElement('div');
+        card.className = 'quiz-preview-card';
+
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h3 style="margin: 0 0 10px 0;">
+                ${quiz.title}
+              </h3>
+              <p style="color: #666; margin: 5px 0;">${quiz.description || 'No description'}</p>
+              <p style="font-size: 13px; color: #666;">
+                <strong>Questions:</strong> ${quiz.total_questions || '?'} | 
+                <strong>Time:</strong> ${quiz.time_limit_minutes || '?'} min | 
+                <strong>Pass:</strong> ${quiz.pass_threshold || '?'}%
+              </p>
+            </div>
+            <button class="btn-take-quiz" onclick="startQuiz('${quiz.quiz_id}')">
+              Start Quiz
+            </button>
+          </div>
+        `;
+
+        quizList.appendChild(card);
+      }
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
+      document.getElementById('quizList').innerHTML = '<p style="color: red;">Error loading quizzes: ' + error.message + '</p>';
+    }
+  }
+
+  // Start quiz
+  window.startQuiz = async function(quizId) {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+
+    try {
+      const { data: quiz, error } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('quiz_id', quizId)
+        .single();
+
+      if (error) throw error;
+      if (!quiz) throw new Error('Quiz not found');
+
+      currentQuiz = quiz;
+      userAnswers = [];
+      document.getElementById('quizList').style.display = 'none';
+      document.getElementById('quizTaking').style.display = 'block';
+      document.getElementById('quizTitle').textContent = quiz.title;
+      document.getElementById('quizDescription').textContent = quiz.description || '';
+
+      loadQuizQuestions(quizId);
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      alert('Error starting quiz: ' + error.message);
+    }
+  };
+
+  // Load quiz questions
+  async function loadQuizQuestions(quizId) {
+    try {
+      const { data: questions, error } = await supabase
+        .from('quiz_questions')
+        .select('*')
+        .eq('quiz_id', quizId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const questionsDiv = document.getElementById('questions');
+      questionsDiv.innerHTML = '';
+      currentQuizQuestions = questions || [];
+
+      if (!currentQuizQuestions.length) {
+        questionsDiv.innerHTML = '<p style="color: #666;">No questions found for this quiz.</p>';
+        document.getElementById('submitQuiz').style.display = 'none';
+        return;
+      }
+
+      currentQuizQuestions.forEach((q, idx) => {
+        let options = q.options;
+        
+        // Parse options - could be JSON string, array, or individual option fields
+        if (typeof options === 'string') {
+          try {
+            options = JSON.parse(options);
+          } catch {
+            options = [options];
+          }
+        }
+        if (!Array.isArray(options)) {
+          options = [q.option_a, q.option_b, q.option_c, q.option_d].filter(o => o && o.trim());
+        }
+
+        const questionId = q.question_id;
+        const questionText = q.question_text || 'Untitled question';
+        const qDiv = document.createElement('div');
+        qDiv.style.cssText = 'margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 6px;';
+        qDiv.innerHTML = `
+          <p><strong>Question ${idx + 1}:</strong> ${questionText}</p>
+          <div style="margin-left: 20px;">
+            ${options.length > 0 ? options.map((option, optIndex) => `
+              <label style="display: block; margin: 8px 0;">
+                <input type="radio" name="q${questionId}" value="${optIndex}" />
+                ${String.fromCharCode(65 + optIndex)}. ${option}
+              </label>
+            `).join('') : '<p style="color: #999;">No answer options available.</p>'}
+          </div>
+        `;
+        questionsDiv.appendChild(qDiv);
+        userAnswers[idx] = { questionId: questionId, answer: null };
+      });
+
+      document.getElementById('submitQuiz').style.display = 'block';
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      document.getElementById('questions').innerHTML = '<p style="color: red;">Error loading questions: ' + error.message + '</p>';
+    }
+  }
+
+  // Submit quiz
+  document.getElementById('submitQuiz').addEventListener('click', async () => {
+    currentQuizQuestions.forEach((question, index) => {
+      const questionId = question.question_id || question.id;
+      const selected = document.querySelector(`input[name="q${questionId}"]:checked`);
+      userAnswers[index] = selected ? parseInt(selected.value, 10) : null;
+    });
+
+    let correct = 0;
+    const detailedResults = [];
+    const user = (await supabase.auth.getUser()).data.user;
+
+    currentQuizQuestions.forEach((question, index) => {
+      const correctAnswer = question.correctAnswer ?? question.correct_answer;
+      const isCorrect = userAnswers[index] === correctAnswer;
+      if (isCorrect) correct++;
+
+      detailedResults.push(`
+        <div class="table-card">
+          <h4>Question ${index + 1}: ${question.question_text}</h4>
+          <p><strong>Your answer:</strong> ${userAnswers[index] !== null ? String.fromCharCode(65 + userAnswers[index]) : 'Not answered'}</p>
+          <p><strong>Correct answer:</strong> ${correctAnswer !== null && correctAnswer !== undefined ? String.fromCharCode(65 + correctAnswer) : 'N/A'}</p>
+          <p><strong>Result:</strong> <span class="${isCorrect ? 'status-yes' : 'status-no'}">${isCorrect ? 'Correct' : 'Incorrect'}</span></p>
+        </div>
+      `);
+    });
+
+    const percentage = currentQuizQuestions.length > 0 ? Math.round((correct / currentQuizQuestions.length) * 100) : 0;
+
+    try {
+      // Insert quiz attempt
+      const { data: attemptData, error: insertError } = await supabase.from('quiz_attempts').insert([{
+        quiz_id: currentQuiz.quiz_id,
+        learner_id: user.id,
+        score: correct,
+        total_score: currentQuizQuestions.length,
+        status: 'submitted',
+        submitted_at: new Date().toISOString()
+      }]).select();
+      
+      if (insertError) throw insertError;
+      if (!attemptData || !attemptData[0]) throw new Error('Attempt not saved');
+
+      const attemptId = attemptData[0].attempt_id;
+
+      // Insert individual answers
+      const answers = currentQuizQuestions.map((question, index) => ({
+        attempt_id: attemptId,
+        question_id: question.question_id || question.id,
+        selected_option: userAnswers[index],
+        is_correct: userAnswers[index] === (question.correctAnswer ?? question.correct_answer),
+        points_awarded: userAnswers[index] === (question.correctAnswer ?? question.correct_answer) ? 1 : 0,
+        answered_at: new Date().toISOString()
+      }));
+
+      if (answers.length > 0) {
+        const { error: answersError } = await supabase.from('quiz_answers').insert(answers);
+        if (answersError) console.warn('Could not save individual answers:', answersError);
+      }
+    } catch (error) {
+      console.error('Error saving result:', error);
+      alert('Warning: Quiz submitted but result could not be saved: ' + error.message);
+    }
+
+    document.getElementById('quizTaking').style.display = 'none';
+    document.getElementById('quizResults').style.display = 'block';
+    document.getElementById('resultTitle').textContent = `Results for: ${currentQuiz.title}`;
+    document.getElementById('score').textContent = `${correct}/${currentQuizQuestions.length}`;
+    document.getElementById('percentage').textContent = `${percentage}%`;
+    document.getElementById('detailedResults').innerHTML = detailedResults.join('');
+  });
+
+  document.getElementById('backToQuizzes').addEventListener('click', () => {
+    document.getElementById('quizResults').style.display = 'none';
+    document.getElementById('quizList').style.display = 'block';
+  });
+
+  loadQuizzes();
+</script>
+</body>
+</html>

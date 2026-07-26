@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Learner Textbooks - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html"><span>Dashboard</span></a>
+      <a href="progress-learner.html"><span>Progress</span></a>
+      <a href="quiz-learner.html"><span>Quiz</span></a>
+      <a href="papers-learner.html"><span>Papers</span></a>
+      <a href="videos-learner.html"><span>Videos</span></a>
+      <a href="textbooks-learner.html" class="active"><span>Textbooks</span></a>
+      <a href="messages-learner.html"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Textbooks</h2>
+      <p>Access your digital textbooks and study materials.</p>
+
+      <div id="textbooksList" class="vertical-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  async function loadTextbooks() {
+    try {
+      // For now, we'll start with no textbooks and add them later as needed.
+      // In production, this would query a 'textbooks' table from Supabase
+      const sampleTextbooks = [
+        {
+          id: 1,
+          title: "Gr10 ENG FAL Studyguide LR",
+          description: "Study guide for Grade 10 English FAL",
+          file_path: "https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/Gr10-ENG-FAL-studyguide_LR.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9HcjEwLUVORy1GQUwtc3R1ZHlndWlkZV9MUi5wZGYiLCJpYXQiOjE3Nzc5Njk1MDUsImV4cCI6MTgwOTUwNTUwNX0.jx-7udrALYOm0w2EidBHqaz3yJpchTL25Yl6Av2-ToE",
+          file_size: "5.2 MB",
+          upload_date: "2015-01-19"
+        },
+        {
+          id: 2,
+          title: "English FAL Short Stories Changes",
+          description: "Short stories study guide for English FAL",
+          file_path: "https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/english-fal-short-stories-changes-978_1_4315_3366_4.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9lbmdsaXNoLWZhbC1zaG9ydC1zdG9yaWVzLWNoYW5nZXMtOTc4XzFfNDMxNV8zMzY2XzQucGRmIiwiaWF0IjoxNzc3OTY5NTY2LCJleHAiOjE4MDk1MDU1NjZ9.l2ZL4IylpiuROIGiD-VGPLhB5J3t-zJNHSAGhCy3f14",
+          file_size: "4.0 MB",
+          upload_date: "2024-05-05"
+        },
+        {
+          id: 3,
+          title: "MTG EFAL P2p Poetry 19 Jan 2015",
+          description: "Past paper resource for poetry",
+          file_path: "https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/MTG%20EFAL%20P2p.%20POETRY.%2019Jan2015_WEB.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9NVEcgRUZBTCBQMnAuIFBPRVRSWS4gMTlKYW4yMDE1X1dFQi5wZGYiLCJpYXQiOjE3Nzc5Njk2MTYsImV4cCI6MTgwOTUwNTYxNn0.O0NuqPa24Dzfaog-7rkraiqr5xhOfTwrntoXGDhySuI",
+          file_size: "3.8 MB",
+          upload_date: "2015-01-19"
+        },
+        {
+          id: 4,
+          title: "MTG EFAL P2d NBTT 19_01_2015 WEB",
+          description: "Past paper resource for NBTT",
+          file_path: "https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/MTG%20EFAL%20P2d%20NBTT%2019_01_2015%20WEB.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9NVEcgRUZBTCBQMmQgTkJUVCAxOV8wMV8yMDE1IFdFQi5wZGYiLCJpYXQiOjE3Nzc5Njk2MzQsImV4cCI6MTgwOTUwNTYzNH0.gJseFsOura5WJf-CvqWIgSPJUvpz6Iy9hxorKdDV22s",
+          file_size: "Unknown",
+          upload_date: "2015-01-19"
+        },
+        {
+          id: 5,
+          title: "MTG EFAL P2n GOW 19_01_2015 WEB",
+          description: "Past paper resource for GOW",
+          file_path: "https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/MTG%20EFAL%20P2n%20GOW%2019_01_2015%20WEB.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9NVEcgRUZBTCBQMm4gR09XIDE5XzAxXzIwMTUgV0VCLnBkZiIsImlhdCI6MTc3Nzk2OTY4NSwiZXhwIjoxODA5NTA1Njg1fQ.1dgOR3Tu_Zrf3UcVDcocqzRHhBsfDDmjEOL8uvk8ISQ",
+          file_size: "Unknown",
+          upload_date: "2015-01-19"
+        }
+      ];
+
+      const list = document.getElementById("textbooksList");
+      list.innerHTML = "";
+
+      if (sampleTextbooks.length === 0) {
+        list.innerHTML = '<p>No textbooks available yet.</p>';
+        return;
+      }
+
+      sampleTextbooks.forEach(textbook => {
+        const card = document.createElement("div");
+        card.className = "table-card";
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <div style="flex: 1;">
+              <strong style="font-size: 1.1em; color: #1d2d68;">${textbook.title}</strong>
+              <br><small style="color: #666;">Size: ${textbook.file_size} | Uploaded: ${new Date(textbook.upload_date).toLocaleDateString()}</small>
+            </div>
+            <button class="btn-primary" onclick="openTextbook('${textbook.file_path}')">
+              Open PDF
+            </button>
+          </div>
+          <p style="margin: 8px 0; color: #555;">${textbook.description}</p>
+        `;
+        list.appendChild(card);
+      });
+
+    } catch (error) {
+      console.error("Error loading textbooks:", error);
+      document.getElementById("textbooksList").innerHTML = '<p>Error loading textbooks. Please try again later.</p>';
+    }
+  }
+
+  function openTextbook(filePath) {
+    // In a real implementation, this would open the PDF in a new tab or embedded viewer
+    // For now, we'll simulate opening by creating a download link
+    const link = document.createElement('a');
+    link.href = filePath;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  loadTextbooks();
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      // Close sidebar immediately when a menu item is chosen
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+
+      // Only prevent default for in-page navigation (data-page links)
+      if (link.hasAttribute('data-page')) {
+        e.preventDefault();
+        menuLinks.forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+</script>
+
+</body>
+</html>

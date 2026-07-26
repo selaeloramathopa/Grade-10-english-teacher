@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teacher Dashboard - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Teacher Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-teacher.html" class="active"><span>Dashboard</span></a>
+      <a href="progress-teacher.html"><span>Progress</span></a>
+      <a href="quiz-teacher.html"><span>Quiz</span></a>
+      <a href="papers-teacher.html"><span>Papers</span></a>
+      <a href="videos-teacher.html"><span>Videos</span></a>
+      <a href="textbooks-teacher.html"><span>Textbooks</span></a>
+      <a href="messages-teacher.html"><span>Messages</span></a>
+      <a href="settings-teacher.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Teacher Dashboard</h2>
+      <p>Welcome to the Grade 10 English Teacher dashboard.</p>
+      <p>Here you can manage classes, assign exercises, and review learner progress.</p>
+      
+      <!-- Summary Cards -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <h3>Total Learners</h3>
+          <div class="metric" id="totalLearners">0</div>
+        </div>
+        <div class="summary-card">
+          <h3>Quiz Completion</h3>
+          <div class="metric" id="quizCompletion">0%</div>
+        </div>
+        <div class="summary-card">
+          <h3>Unread Messages</h3>
+          <div class="metric" id="unreadMessages">0</div>
+        </div>
+      </div>
+      <div class="dashboard-actions" style="margin: 20px 0; display:flex; gap:12px; flex-wrap:wrap;">
+        <a href="messages-teacher.html" style="padding: 12px 16px; background:#007bff; color:#fff; border-radius:8px; text-decoration:none;">Go to Messages</a>
+        <a href="messages-teacher.html" style="padding: 12px 16px; background:#28a745; color:#fff; border-radius:8px; text-decoration:none;">Post Announcement</a>
+      </div>
+      <h3>Recent Announcements & Questions</h3>
+      <div id="announcementsList" class="vertical-list"></div>
+      
+      <h3>Learners</h3>
+      <div id="learnersList" class="vertical-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  async function loadSummaryMetrics() {
+    try {
+      // Get current user first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Total Learners
+      const { data: learners, error: learnersError } = await supabase
+        .from("learners")
+        .select("id");
+      if (!learnersError) {
+        document.getElementById("totalLearners").textContent = learners.length;
+      }
+
+      // Use quizzes created by this teacher to compute completion rate
+      const { data: classes, error: classesError } = await supabase
+        .from("quizzes")
+        .select("quiz_id")
+        .eq("teacher_id", user.id);
+
+      const quizIds = classes ? classes.map(q => q.quiz_id) : [];
+      if (quizIds.length > 0) {
+        const { data: quizAttempts, error: quizError } = await supabase
+          .from("quiz_attempts")
+          .select("status")
+          .in("quiz_id", quizIds);
+        if (!quizError && quizAttempts) {
+          const submittedCount = quizAttempts.filter(a => a.status === "submitted").length;
+          const totalAttempts = quizAttempts.length;
+          const rate = totalAttempts > 0 ? (submittedCount / totalAttempts) * 100 : 0;
+          document.getElementById("quizCompletion").textContent = Math.round(rate) + "%";
+        }
+      }
+
+      // Unread Messages (messages sent to teachers that haven't been read)
+      const { data: messages, error: messagesError } = await supabase
+        .from("messages")
+        .select("id, read_at")
+        .eq("recipient_type", "teacher")
+        .eq("recipient_id", user.id);
+      if (!messagesError) {
+        const unread = messages.filter(m => !m.read_at).length;
+        document.getElementById("unreadMessages").textContent = unread;
+      }
+
+    } catch (error) {
+      console.error("Error loading summary metrics:", error);
+    }
+  }
+
+  async function loadLearners() {
+    const { data, error } = await supabase.from("learners").select("*");
+    if (error) {
+      console.error("Error fetching learners:", error);
+      return;
+    }
+    const list = document.getElementById("learnersList");
+    list.innerHTML = "";
+    data.forEach(learner => {
+      const card = document.createElement("div");
+      card.className = "table-card";
+      card.innerHTML = `
+        <strong>${learner.first_name} ${learner.last_name}</strong>
+        <p><strong>Email:</strong> ${learner.email}</p>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  async function loadAnnouncements() {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .in('message_type', ['announcement', 'question'])
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const list = document.getElementById('announcementsList');
+    if (error) {
+      console.error('Error loading announcements:', error);
+      list.innerHTML = '<p>Unable to load announcements.</p>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      list.innerHTML = '<p>No recent announcements or questions.</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    data.forEach(msg => {
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      card.innerHTML = `
+        <strong>${(msg.message_type || '').toUpperCase()}</strong>
+        <p>${msg.content ? msg.content.substring(0, 120) + (msg.content.length > 120 ? '...' : '') : ''}</p>
+        <small>${new Date(msg.created_at).toLocaleDateString()}</small>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  loadLearners();
+  loadSummaryMetrics();
+  loadAnnouncements();
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      // Close sidebar immediately when a menu item is chosen
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+
+      // Only prevent default for in-page navigation (data-page links)
+      if (link.hasAttribute('data-page')) {
+        e.preventDefault();
+        menuLinks.forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+</script>
+
+</body>
+</html>
+
+

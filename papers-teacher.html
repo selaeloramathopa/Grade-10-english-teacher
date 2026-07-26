@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teacher Papers - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Teacher Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-teacher.html"><span>Dashboard</span></a>
+      <a href="progress-teacher.html"><span>Progress</span></a>
+      <a href="quiz-teacher.html"><span>Quiz</span></a>
+      <a href="papers-teacher.html" class="active"><span>Papers</span></a>
+      <a href="videos-teacher.html"><span>Videos</span></a>
+      <a href="textbooks-teacher.html"><span>Textbooks</span></a>
+      <a href="messages-teacher.html"><span>Messages</span></a>
+      <a href="settings-teacher.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Previous Question Papers</h2>
+      <p>Upload past papers with multiple questions to share with learners.</p>
+
+      <div class="table-card">
+        <h3>Upload New Paper</h3>
+        <form id="paperForm">
+          <input type="text" id="paperTitle" placeholder="Paper title" required />
+          <textarea id="paperDescription" placeholder="Short description" rows="3"></textarea>
+          <div id="paperQuestionsContainer"></div>
+          <button type="button" id="addPaperQuestion">Add Question</button>
+          <button type="submit">Save Paper</button>
+          <div class="message" id="paperMessage"></div>
+        </form>
+      </div>
+
+      <div class="table-card">
+        <h3>Your Uploaded Papers</h3>
+        <div id="papersList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+
+  let paperQuestionCount = 0;
+
+  function addQuestionField(text = '') {
+    paperQuestionCount += 1;
+    const questionBlock = document.createElement('div');
+    questionBlock.className = 'question-item';
+    questionBlock.innerHTML = `
+      <h4>Question ${paperQuestionCount}</h4>
+      <textarea class="question-text" placeholder="Write the question here" rows="2" required>${text}</textarea>
+      <button type="button" class="remove-question">Remove Question</button>
+    `;
+    document.getElementById('paperQuestionsContainer').appendChild(questionBlock);
+  }
+
+  document.getElementById('addPaperQuestion').addEventListener('click', () => {
+    addQuestionField();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.classList.contains('remove-question')) {
+      event.target.closest('.question-item').remove();
+      paperQuestionCount -= 1;
+      updateQuestionNumbers();
+    }
+  });
+
+  function updateQuestionNumbers() {
+    document.querySelectorAll('.question-item h4').forEach((header, index) => {
+      header.textContent = `Question ${index + 1}`;
+    });
+  }
+
+  document.getElementById('paperForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const title = document.getElementById('paperTitle').value.trim();
+    const description = document.getElementById('paperDescription').value.trim();
+    const messageDiv = document.getElementById('paperMessage');
+
+    const questions = Array.from(document.querySelectorAll('.question-text')).map(textarea => textarea.value.trim()).filter(Boolean);
+
+    if (!title || questions.length === 0) {
+      messageDiv.textContent = 'Please enter a title and at least one question.';
+      return;
+    }
+
+    messageDiv.textContent = 'Saving paper...';
+
+    try {
+      const userResponse = await supabase.auth.getUser();
+      const user = userResponse.data.user;
+      if (!user) throw new Error('Unable to get signed-in user.');
+
+      const { error } = await supabase.from('previous_papers').insert([{
+        paper_title: title,
+        paper_description: description,
+        questions,
+        teacher_id: user.id
+      }]);
+
+      if (error) throw error;
+
+      messageDiv.textContent = 'Paper uploaded successfully.';
+      document.getElementById('paperForm').reset();
+      document.getElementById('paperQuestionsContainer').innerHTML = '';
+      paperQuestionCount = 0;
+      addQuestionField();
+      loadPapers();
+    } catch (error) {
+      messageDiv.textContent = 'Error saving paper: ' + (error.message || error);
+      console.error('Save paper error:', error);
+    }
+  });
+
+  async function loadPapers() {
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('previous_papers')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const papersList = document.getElementById('papersList');
+      papersList.innerHTML = '';
+
+      if (!data || data.length === 0) {
+        papersList.innerHTML = `<div class="table-card"><strong>No papers available yet.</strong><p>Past papers will appear here once they are uploaded.</p></div>`;
+        return;
+      }
+
+      data.forEach(paper => {
+        const card = document.createElement('div');
+        card.className = 'table-card';
+        card.innerHTML = `
+          <strong>${paper.paper_title}</strong>
+          <p>${paper.paper_description || 'No description provided.'}</p>
+          <p><strong>Questions:</strong> ${paper.questions?.length || 0}</p>
+          <p><strong>Uploaded:</strong> ${new Date(paper.created_at).toLocaleDateString()}</p>
+          <details>
+            <summary>View questions</summary>
+            ${Array.from(paper.questions || []).map((question, index) => `
+              <div class="table-card" style="margin: 10px 0; padding: 10px;">
+                <strong>Question ${index + 1}</strong>
+                <p>${question}</p>
+              </div>
+            `).join('')}
+          </details>
+        `;
+        papersList.appendChild(card);
+      });
+    } catch (error) {
+      console.error('Error loading papers:', error);
+    }
+  }
+
+  addQuestionField();
+  loadPapers();
+</script>
+</body>
+</html>

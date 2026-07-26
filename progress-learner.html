@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Learner Progress - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html"><span>Dashboard</span></a>
+      <a href="progress-learner.html" class="active"><span>Progress</span></a>
+      <a href="quiz-learner.html"><span>Quiz</span></a>
+      <a href="papers-learner.html"><span>Papers</span></a>
+      <a href="videos-learner.html"><span>Videos</span></a>
+      <a href="textbooks-learner.html"><span>Textbooks</span></a>
+      <a href="messages-learner.html"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>My Progress</h2>
+      <p>Track your learning progress across quizzes and classes.</p>
+
+      <div class="table-card">
+        <h3>Performance Summary</h3>
+        <p><strong>Total Attempts:</strong> <span id="totalAttempts">0</span></p>
+        <p><strong>Passed:</strong> <span id="totalPassed">0</span></p>
+        <p><strong>Average Score:</strong> <span id="averageScore">0%</span></p>
+      </div>
+
+      <div class="table-card">
+        <h3>Detailed Attempts</h3>
+        <div id="quizAttemptsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  async function loadProgress() {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+
+    try {
+      // Load quiz attempts with quiz details
+      const { data: attempts, error: attemptsError } = await supabase
+        .from('quiz_attempts')
+        .select('*, quizzes(title, description, pass_threshold)')
+        .eq('learner_id', user.id)
+        .eq('status', 'submitted')
+        .order('submitted_at', { ascending: false });
+      
+      if (attemptsError) throw attemptsError;
+
+      const quizAttemptsList = document.getElementById('quizAttemptsList');
+      quizAttemptsList.innerHTML = '';
+
+      if (!attempts || attempts.length === 0) {
+        quizAttemptsList.innerHTML = `<div class="table-card"><strong>No quiz attempts yet</strong><p>Take a quiz to see your progress here.</p></div>`;
+        document.getElementById('totalAttempts').textContent = '0';
+        document.getElementById('totalPassed').textContent = '0';
+        document.getElementById('averageScore').textContent = '0%';
+        return;
+      }
+
+      // Calculate summary metrics
+      let totalPassed = 0;
+      let totalScore = 0;
+
+      attempts.forEach(attempt => {
+        const percentage = attempt.total_score ? Math.round((attempt.score || 0) / attempt.total_score * 100) : 0;
+        const passed = attempt.total_score ? (attempt.score || 0) >= ((attempt.quizzes?.pass_threshold || 50) * attempt.total_score / 100) : false;
+        if (passed) totalPassed++;
+        totalScore += percentage;
+      });
+
+      const averageScore = attempts.length > 0 ? Math.round(totalScore / attempts.length) : 0;
+
+      document.getElementById('totalAttempts').textContent = attempts.length;
+      document.getElementById('totalPassed').textContent = totalPassed;
+      document.getElementById('averageScore').textContent = averageScore + '%';
+
+      // Display individual attempts
+      attempts.forEach(attempt => {
+        const card = document.createElement('div');
+        card.className = 'table-card';
+        const percentage = attempt.total_score ? Math.round((attempt.score || 0) / attempt.total_score * 100) : 'N/A';
+        const passed = attempt.total_score ? (attempt.score || 0) >= ((attempt.quizzes?.pass_threshold || 50) * attempt.total_score / 100) : false;
+        card.innerHTML = `
+          <strong>${attempt.quizzes?.title || 'Unknown Quiz'}</strong>
+          <p>${attempt.quizzes?.description || ''}</p>
+          <p><strong>Score:</strong> ${attempt.score || 0}/${attempt.total_score}</p>
+          <p><strong>Percentage:</strong> ${percentage}%</p>
+          <p><strong>Status:</strong> <span style="${passed ? 'color: green;' : 'color: red;'}">${passed ? 'Passed ✅' : 'Failed ❌'}</span></p>
+          <p><strong>Submitted:</strong> ${attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleDateString() : 'Not submitted'}</p>
+        `;
+        quizAttemptsList.appendChild(card);
+      });
+    } catch (error) {
+      console.error('Error loading progress:', error);
+      document.getElementById('quizAttemptsList').innerHTML = `<p style="color: red;">Error loading quiz attempts: ${error.message}</p>`;
+    }
+  }
+
+  loadProgress();
+</script>
+</body>
+</html>

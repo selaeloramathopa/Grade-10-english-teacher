@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - English Learning System</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>Login</h2>
+
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="password" placeholder="Password" />
+
+  <button id="loginBtn">Log In</button>
+  <p class="alt forgot">
+    <a href="forgot-password.html">Forgot password?</a>
+  </p>
+
+  <div class="message" id="message"></div>
+
+  <p class="alt">
+    New user? <a href="signup.html">Create an account</a>
+  </p>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes("YOUR_SUPABASE") || supabaseKey.includes("YOUR_SUPABASE")) {
+    alert("Please set supabaseUrl / supabaseKey in login.html before testing.");
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const loginBtn = document.getElementById("loginBtn");
+  const messageDiv = document.getElementById("message");
+
+  loginBtn.addEventListener("click", async () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!email || !password) {
+      messageDiv.textContent = "❌ Please fill in email and password.";
+      return;
+    }
+
+    loginBtn.disabled = true;
+    messageDiv.textContent = "⏳ Checking credentials...";
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      const user = data?.user;
+      if (!user || !user.id) {
+        throw new Error("Login succeeded but no user was returned.");
+      }
+
+      let profile = null;
+      let profileError = null;
+
+      // Try learners table
+      const { data: learnerData, error: learnerError } = await supabase
+        .from("learners")
+        .select("approved")
+        .eq("id", user.id)
+        .single();
+
+      if (learnerData) {
+        profile = { ...learnerData, role: "learner" };
+      } else {
+        // Try teachers table
+        const { data: teacherData, error: teacherError } = await supabase
+          .from("teachers")
+          .select("approved")
+          .eq("id", user.id)
+          .single();
+
+        if (teacherData) {
+          profile = { ...teacherData, role: "teacher" };
+        } else {
+          profileError = learnerError || teacherError;
+        }
+      }
+
+      if (profileError || !profile) {
+        throw profileError || new Error("Profile not found.");
+      }
+
+      if (profile.approved === false) {
+        messageDiv.textContent = `⏳ Your ${profile.role} account is pending admin approval. Please wait for confirmation.`;
+        return;
+      }
+
+      const redirectUrl = profile.role === "teacher"
+        ? "dashboard-teacher.html"
+        : "dashboard-learner.html";
+
+      messageDiv.textContent = "✅ Login successful. Redirecting...";
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 1200);
+    } catch (err) {
+      messageDiv.textContent = "❌ " + (err?.message || String(err));
+    } finally {
+      loginBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>

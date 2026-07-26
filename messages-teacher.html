@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Messages - Teacher</title>
+  <link rel="stylesheet" href="login.css">
+  <style>
+    .messages-list { max-width: 800px; margin: 0 auto; }
+    .message-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .message-header { font-weight: bold; margin-bottom: 8px; }
+    .message-type { color: #007bff; }
+    .answer { margin-left: 20px; border-left: 2px solid #007bff; padding-left: 10px; }
+    .post-form { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+    .post-form select, .post-form textarea { width: 100%; margin-bottom: 10px; }
+  </style>
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Teacher Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-teacher.html"><span>Dashboard</span></a>
+      <a href="progress-teacher.html"><span>Progress</span></a>
+      <a href="quiz-teacher.html"><span>Quiz</span></a>
+      <a href="papers-teacher.html"><span>Papers</span></a>
+      <a href="videos-teacher.html"><span>Videos</span></a>
+      <a href="textbooks-teacher.html"><span>Textbooks</span></a>
+      <a href="messages-teacher.html" class="active"><span>Messages</span></a>
+      <a href="settings-teacher.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Messages & Announcements</h2>
+      <p>Post announcements or answer learner questions.</p>
+
+      <div class="post-form">
+        <h3>Post New Message</h3>
+        <select id="messageType">
+          <option value="announcement">Announcement</option>
+          <option value="answer">Answer a Question</option>
+        </select>
+        <select id="questionSelect" style="display: none;">
+          <option value="">Select a question to answer</option>
+        </select>
+        <textarea id="messageText" placeholder="Write your message..." rows="4"></textarea>
+        <button id="postMessage">Post</button>
+      </div>
+
+      <div class="messages-list" id="messagesList"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  document.getElementById('messageType').addEventListener('change', (e) => {
+    const select = document.getElementById('questionSelect');
+    select.style.display = e.target.value === 'answer' ? 'block' : 'none';
+  });
+
+  async function getUserName(userId) {
+    let { data, error } = await supabase.from('teachers').select('first_name, last_name').eq('id', userId).single();
+    if (data) return `${data.first_name} ${data.last_name} (Teacher)`;
+    ({ data, error } = await supabase.from('learners').select('first_name, last_name').eq('id', userId).single());
+    if (data) return `${data.first_name} ${data.last_name} (Learner)`;
+    return 'Unknown User';
+  }
+
+  async function loadMessages() {
+    const { data, error } = await supabase.from('messages').select('*').is('parent_message_id', null).order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error loading messages:', error);
+      return;
+    }
+
+    const messagesList = document.getElementById('messagesList');
+    messagesList.innerHTML = '';
+
+    for (const msg of data) {
+      const senderName = await getUserName(msg.sender_id);
+      const card = document.createElement('div');
+      card.className = 'message-card';
+      card.innerHTML = `
+        <div class="message-header">${senderName} <span class="message-type">(${msg.message_type})</span></div>
+        <p>${msg.content}</p>
+        <small>${new Date(msg.created_at).toLocaleString()}</small>
+        <div class="answers" id="answers-${msg.message_id}"></div>
+      `;
+      messagesList.appendChild(card);
+
+      if (msg.message_type === 'question') {
+        await loadAnswers(msg.message_id);
+      }
+    }
+  }
+
+  async function loadAnswers(parentId) {
+    const { data, error } = await supabase.from('messages').select('*').eq('parent_message_id', parentId).order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error loading answers:', error);
+      return;
+    }
+
+    const answersDiv = document.getElementById(`answers-${parentId}`);
+    for (const ans of data) {
+      const senderName = await getUserName(ans.sender_id);
+      const ansDiv = document.createElement('div');
+      ansDiv.className = 'message-card answer';
+      ansDiv.innerHTML = `
+        <div class="message-header">${senderName} <span class="message-type">(answer)</span></div>
+        <p>${ans.content}</p>
+        <small>${new Date(ans.created_at).toLocaleString()}</small>
+      `;
+      answersDiv.appendChild(ansDiv);
+    }
+  }
+
+  async function loadQuestions() {
+    const { data, error } = await supabase.from('messages').select('*').eq('message_type', 'question').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error loading questions:', error);
+      return;
+    }
+
+    const select = document.getElementById('questionSelect');
+    select.innerHTML = '<option value="">Select a question to answer</option>';
+    data.forEach(q => {
+      const option = document.createElement('option');
+      option.value = q.message_id;
+      option.textContent = q.content.substring(0, 50) + '...';
+      select.appendChild(option);
+    });
+  }
+
+  document.getElementById('postMessage').addEventListener('click', async () => {
+    const type = document.getElementById('messageType').value;
+    const text = document.getElementById('messageText').value.trim();
+    const parentId = type === 'answer' ? document.getElementById('questionSelect').value : null;
+
+    if (!text || (type === 'answer' && !parentId)) return;
+
+    const user = (await supabase.auth.getUser()).data.user;
+    const { error } = await supabase.from('messages').insert([{
+      sender_id: user.id,
+      sender_type: 'teacher',      recipient_id: null,
+      recipient_type: null,      content: text,
+      message_type: type,
+      parent_message_id: parentId || null
+    }]);
+
+    if (error) {
+      console.error('Error posting message:', error);
+      alert('Failed to post message');
+      return;
+    }
+
+    document.getElementById('messageText').value = '';
+    loadMessages();
+    if (type === 'answer') loadQuestions();
+  });
+
+  loadMessages();
+  loadQuestions();
+</script>
+</body>
+</html>

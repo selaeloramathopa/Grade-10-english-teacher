@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Learner Papers - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html"><span>Dashboard</span></a>
+      <a href="progress-learner.html"><span>Progress</span></a>
+      <a href="quiz-learner.html"><span>Quiz</span></a>
+      <a href="papers-learner.html" class="active"><span>Papers</span></a>
+      <a href="videos-learner.html"><span>Videos</span></a>
+      <a href="textbooks-learner.html"><span>Textbooks</span></a>
+      <a href="messages-learner.html"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Previous Question Papers</h2>
+      <p>Browse past papers uploaded by teachers to practice and revise.</p>
+
+      <div id="papersList" class="vertical-list"></div>
+      <div class="table-card" style="margin-top: 20px;">
+        <h3>Direct PDFs</h3>
+        <p><a href="https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/2017-ENG-MARCH-QPMEMO.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay8yMDE3LUVORy1NQVJDSC1RUE1FTU8ucGRmIiwiaWF0IjoxNzc3OTY5MTA4LCJleHAiOjE4MDk1MDUxMDh9.fFX1olaUl3UsLsYwPLJjB9d8dRejg2P1C5pkj5ufy6A" target="_blank" rel="noopener noreferrer">Open 2017 ENG March QP Memo PDF</a></p>
+        <p><a href="https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/English-FAL-P3-Grade-10-Nov-2018.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9FbmdsaXNoLUZBTC1QMy1HcmFkZS0xMC1Ob3YtMjAxOC5wZGYiLCJpYXQiOjE3Nzc5NjkxODgsImV4cCI6MTgwOTUwNTE4OH0.cXEEM4DkwJIhdmCyrxM9HDS__y1m9QiErQ1bSn8zqcs" target="_blank" rel="noopener noreferrer">Open English FAL P3 Grade 10 Nov 2018 PDF</a></p>
+        <p><a href="https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/English-Grade-10-Nov-2020-P3%20(1).pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9FbmdsaXNoLUdyYWRlLTEwLU5vdi0yMDIwLVAzICgxKS5wZGYiLCJpYXQiOjE3Nzc5NjkyMTAsImV4cCI6MTgwOTUwNTIxMH0.dgft56BInk--PhAUfYpsjVcKIiXy2rBZR7TzfGC12G8" target="_blank" rel="noopener noreferrer">Open English Grade 10 Nov 2020 P3 PDF</a></p>
+        <p><a href="https://drgjjjlseafzsacahokn.supabase.co/storage/v1/object/sign/textbook/English-Grade-10-Nov-2020-P3.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hOTMzOWE5My04MTU5LTQ4OTYtOTAyZi0zMDdmOWYyMzk1NGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0ZXh0Ym9vay9FbmdsaXNoLUdyYWRlLTEwLU5vdi0yMDIwLVAzLnBkZiIsImlhdCI6MTc3Nzk2OTIzOSwiZXhwIjoxODA5NTA1MjM5fQ.ZfXJOiH5Uir9EjBqmHd4FvrmrWPWiuW5tlCqHITT-ro" target="_blank" rel="noopener noreferrer">Open English Grade 10 Nov 2020 P3 (alternate) PDF</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  // Close sidebar when any menu item is clicked
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+
+  async function loadPapers() {
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+
+      // Load all published papers (no class restriction)
+      const { data, error } = await supabase
+        .from('previous_papers')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const papersList = document.getElementById('papersList');
+      papersList.innerHTML = '';
+
+      if (!data || data.length === 0) {
+        papersList.innerHTML = `
+          <div class="table-card empty-state">
+            <strong>No papers available</strong>
+            <p>Teachers have not uploaded any previous papers yet. Check back later.</p>
+          </div>
+        `;
+        return;
+      }
+
+      data.forEach(paper => {
+        const card = document.createElement('div');
+        card.className = 'table-card';
+        card.innerHTML = `
+          <strong>${paper.paper_title}</strong>
+          <p>${paper.paper_description || 'No description provided.'}</p>
+          <p><strong>Questions:</strong> ${paper.total_questions || 0}</p>
+          <p><strong>Uploaded:</strong> ${new Date(paper.created_at).toLocaleDateString()}</p>
+          <details>
+            <summary>View questions</summary>
+            ${Array.from(paper.questions || []).map((question, index) => `
+              <div class="table-card">
+                <strong>Question ${index + 1}</strong>
+                <p>${question}</p>
+              </div>
+            `).join('')}
+          </details>
+        `;
+        papersList.appendChild(card);
+      });
+    } catch (error) {
+      console.error('Error loading papers:', error);
+      document.getElementById('papersList').innerHTML = `
+        <div class="table-card empty-state">
+          <strong>Unable to load papers</strong>
+          <p>Please refresh the page or try again later.</p>
+        </div>
+      `;
+    }
+  }
+
+  loadPapers();
+</script>
+</body>
+</html>

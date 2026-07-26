@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Learner Dashboard - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Learner Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-learner.html" class="active"><span>Dashboard</span></a>
+      <a href="progress-learner.html"><span>Progress</span></a>
+      <a href="quiz-learner.html"><span>Quiz</span></a>
+      <a href="papers-learner.html"><span>Papers</span></a>
+      <a href="videos-learner.html"><span>Videos</span></a>
+      <a href="textbooks-learner.html"><span>Textbooks</span></a>
+      <a href="messages-learner.html"><span>Messages</span></a>
+      <a href="settings-learner.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Learner Dashboard</h2>
+      <p>Welcome to your Grade 10 English Learning Dashboard!</p>
+      <p>Track your progress, take quizzes, and stay connected with your teachers.</p>
+      
+      <!-- Progress Summary Cards -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <h3>Quizzes Completed</h3>
+          <div class="metric" id="quizzesCompleted">0</div>
+        </div>
+        <div class="summary-card">
+          <h3>Average Score</h3>
+          <div class="metric" id="averageScore">0%</div>
+        </div>
+        <div class="summary-card">
+          <h3>Quizzes Passed</h3>
+          <div class="metric" id="quizzesPassed">0</div>
+        </div>
+        <div class="summary-card">
+          <h3>Quiz Attempts</h3>
+          <div class="metric" id="totalAttempts">0</div>
+        </div>
+      </div>
+      
+      <div class="dashboard-actions" style="margin: 20px 0; display:flex; gap:12px; flex-wrap:wrap;">
+        <a href="quiz-learner.html" style="padding: 12px 16px; background:#007bff; color:#fff; border-radius:8px; text-decoration:none;">Take a Quiz</a>
+        <a href="progress-learner.html" style="padding: 12px 16px; background:#28a745; color:#fff; border-radius:8px; text-decoration:none;">View My Progress</a>
+        <a href="messages-learner.html" style="padding: 12px 16px; background:#6f42c1; color:#fff; border-radius:8px; text-decoration:none;">Messages & Announcements</a>
+      </div>
+      
+      <h3>Teachers</h3>
+      <div id="teachersList" class="vertical-list"></div>
+      
+      <h3>Recent Announcements & Questions</h3>
+      <div id="announcementsList" class="vertical-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  async function loadProgressMetrics() {
+    try {
+      // Get current user (assuming learner is logged in)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Quizzes Completed (status = submitted)
+      const { data: quizAttempts, error: quizError } = await supabase
+        .from("quiz_attempts")
+        .select("score, total_score, status")
+        .eq("learner_id", user.id)
+        .eq("status", "submitted");
+      if (!quizError) {
+        document.getElementById("quizzesCompleted").textContent = quizAttempts ? quizAttempts.length : 0;
+        document.getElementById("totalAttempts").textContent = quizAttempts ? quizAttempts.length : 0;
+
+        // Average Score and Quizzes Passed (>= 50%)
+        if (quizAttempts && quizAttempts.length > 0) {
+          const avgScore = quizAttempts.reduce((sum, a) => sum + ((a.score || 0) / (a.total_score || 100) * 100), 0) / quizAttempts.length;
+          document.getElementById("averageScore").textContent = Math.round(avgScore) + "%";
+          
+          const passedCount = quizAttempts.filter(a => ((a.score || 0) / (a.total_score || 100)) >= 0.5).length;
+          document.getElementById("quizzesPassed").textContent = passedCount;
+        }
+      }
+
+    } catch (error) {
+      console.error("Error loading progress metrics:", error);
+    }
+  }
+
+  async function loadTeachers() {
+    const { data, error } = await supabase
+      .from("teachers")
+      .select("*")
+      .order('first_name', { ascending: true });
+    if (error) {
+      console.error("Error fetching teachers:", error);
+      return;
+    }
+    const list = document.getElementById("teachersList");
+    list.innerHTML = "";
+    
+    if (!data || data.length === 0) {
+      list.innerHTML = '<p>No teachers available.</p>';
+      return;
+    }
+    
+    data.forEach(teacher => {
+      const card = document.createElement("div");
+      card.className = "table-card";
+      card.innerHTML = `
+        <strong>${teacher.first_name} ${teacher.last_name}</strong>
+        <p><strong>Email:</strong> ${teacher.email}</p>
+        <p><strong>Subject:</strong> English Grade 10</p>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  async function getUserName(userId) {
+    const { data: teacherData } = await supabase.from('teachers').select('first_name, last_name').eq('id', userId).maybeSingle();
+    if (teacherData) return `${teacherData.first_name} ${teacherData.last_name}`;
+    const { data: learnerData } = await supabase.from('learners').select('first_name, last_name').eq('id', userId).maybeSingle();
+    if (learnerData) return `${learnerData.first_name} ${learnerData.last_name}`;
+    return 'Unknown';
+  }
+
+  async function loadAnnouncements() {
+    // Load announcements first
+    const { data: announcements, error: annError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('message_type', 'announcement')
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    // Load recent questions
+    const { data: questions, error: questError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('message_type', 'question')
+      .order('created_at', { ascending: false })
+      .limit(2);
+
+    const list = document.getElementById('announcementsList');
+    list.innerHTML = '';
+
+    // Combine and sort by date
+    const allMessages = [];
+    if (!annError && announcements) allMessages.push(...announcements);
+    if (!questError && questions) allMessages.push(...questions);
+    
+    allMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    allMessages.splice(5); // Keep only 5 most recent
+
+    if (allMessages.length === 0) {
+      list.innerHTML = '<p>No recent announcements or questions.</p>';
+      return;
+    }
+
+    for (const msg of allMessages) {
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      const senderName = await getUserName(msg.sender_id);
+      const isAnnouncement = msg.message_type === 'announcement';
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <div>
+            <strong style="color: ${isAnnouncement ? '#007bff' : '#28a745'};">${isAnnouncement ? '📢 ANNOUNCEMENT' : '❓ QUESTION'}</strong> by ${senderName}
+            <br><small style="color: #666;">${new Date(msg.created_at).toLocaleDateString()}</small>
+          </div>
+        </div>
+        <p style="margin-top: 8px;">${msg.content && msg.content.length > 100 ? msg.content.substring(0, 100) + '...' : (msg.content || '')}</p>
+      `;
+
+      list.appendChild(card);
+    }
+  }
+
+  // Load data in order of importance (top to bottom of page)
+  loadProgressMetrics(); // Load metrics first (shown at top)
+  loadTeachers(); // Then teachers list
+  loadAnnouncements(); // Finally announcements
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      // Close sidebar immediately when a menu item is chosen
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+
+      // Only prevent default for in-page navigation (data-page links)
+      if (link.hasAttribute('data-page')) {
+        e.preventDefault();
+        menuLinks.forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+</script>
+
+</body>
+</html>

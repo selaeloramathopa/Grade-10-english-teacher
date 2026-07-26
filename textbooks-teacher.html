@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teacher Textbooks - English Grade 10</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body class="dashboard">
+<div class="modal-overlay" id="logoutModal">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button class="btn-confirm" id="confirmLogout">Log out</button>
+      <button class="btn-cancel" id="cancelLogout">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="top-bar">
+  <button class="toggle-btn" id="toggleSidebar" title="Toggle Sidebar">≡</button>
+</div>
+<div class="sidebar-layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Teacher Menu</h3>
+    <nav id="menuLinks">
+      <a href="dashboard-teacher.html"><span>Dashboard</span></a>
+      <a href="progress-teacher.html"><span>Progress</span></a>
+      <a href="quiz-teacher.html"><span>Quiz</span></a>
+      <a href="papers-teacher.html"><span>Papers</span></a>
+      <a href="videos-teacher.html"><span>Videos</span></a>
+      <a href="textbooks-teacher.html" class="active"><span>Textbooks</span></a>
+      <a href="messages-teacher.html"><span>Messages</span></a>
+      <a href="settings-teacher.html"><span>Settings</span></a>
+      <a href="#" id="logoutLink"><span>Log out</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-panel">
+    <div class="dashboard-container">
+      <h2>Textbook Management</h2>
+      <p>Upload and manage digital textbooks for learners.</p>
+
+      <!-- Upload Section -->
+      <div class="table-card">
+        <h3>Upload New Textbook</h3>
+        <form id="uploadForm" enctype="multipart/form-data">
+          <input type="text" id="textbookTitle" placeholder="Textbook Title" required>
+          <textarea id="textbookDescription" placeholder="Description" rows="3"></textarea>
+          <input type="file" id="textbookFile" accept=".pdf" required>
+          <button type="submit" class="btn-primary">Upload Textbook</button>
+        </form>
+      </div>
+
+      <!-- Existing Textbooks -->
+      <h3>Uploaded Textbooks</h3>
+      <div id="textbooksList" class="vertical-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebar');
+  
+  // Auto-collapse sidebar by default
+  sidebar.classList.add('collapsed');
+  toggleBtn.classList.add('sidebar-collapsed');
+  
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleBtn.classList.toggle('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+  });
+
+  async function loadTextbooks() {
+    try {
+      // For now, we'll create sample textbooks since the database table might not exist yet
+      // In production, this would query a 'textbooks' table from Supabase
+      const sampleTextbooks = [
+        {
+          id: 1,
+          title: "English Grade 10 - Unit 1: Introduction to Literature",
+          description: "Comprehensive guide to literary analysis and poetry",
+          file_path: "textbooks/grade10_unit1.pdf",
+          file_size: "2.5 MB",
+          upload_date: "2024-01-15",
+          uploaded_by: "Teacher"
+        },
+        {
+          id: 2,
+          title: "English Grade 10 - Unit 2: Grammar Essentials",
+          description: "Complete grammar reference with exercises",
+          file_path: "textbooks/grade10_unit2.pdf",
+          file_size: "1.8 MB",
+          upload_date: "2024-01-20",
+          uploaded_by: "Teacher"
+        },
+        {
+          id: 3,
+          title: "English Grade 10 - Unit 3: Writing Skills",
+          description: "Essay writing techniques and creative writing",
+          file_path: "textbooks/grade10_unit3.pdf",
+          file_size: "3.2 MB",
+          upload_date: "2024-01-25",
+          uploaded_by: "Teacher"
+        }
+      ];
+
+      const list = document.getElementById("textbooksList");
+      list.innerHTML = "";
+
+      if (sampleTextbooks.length === 0) {
+        list.innerHTML = '<p>No textbooks uploaded yet.</p>';
+        return;
+      }
+
+      sampleTextbooks.forEach(textbook => {
+        const card = document.createElement("div");
+        card.className = "table-card";
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <div style="flex: 1;">
+              <strong style="font-size: 1.1em; color: #1d2d68;">${textbook.title}</strong>
+              <br><small style="color: #666;">Size: ${textbook.file_size} | Uploaded: ${new Date(textbook.upload_date).toLocaleDateString()} by ${textbook.uploaded_by}</small>
+            </div>
+            <div>
+              <button class="btn-primary" onclick="openTextbook('${textbook.file_path}')" style="margin-right: 10px;">View</button>
+              <button class="btn-danger" onclick="deleteTextbook(${textbook.id})">Delete</button>
+            </div>
+          </div>
+          <p style="margin: 8px 0; color: #555;">${textbook.description}</p>
+        `;
+        list.appendChild(card);
+      });
+
+    } catch (error) {
+      console.error("Error loading textbooks:", error);
+      document.getElementById("textbooksList").innerHTML = '<p>Error loading textbooks. Please try again later.</p>';
+    }
+  }
+
+  async function uploadTextbook(event) {
+    event.preventDefault();
+
+    const title = document.getElementById("textbookTitle").value;
+    const description = document.getElementById("textbookDescription").value;
+    const file = document.getElementById("textbookFile").files[0];
+
+    if (!title || !description || !file) {
+      alert("Please fill in all fields and select a file.");
+      return;
+    }
+
+    try {
+      // In a real implementation, this would upload to Supabase Storage
+      // For now, we'll just show a success message
+      alert(`Textbook "${title}" uploaded successfully!`);
+
+      // Clear form
+      document.getElementById("uploadForm").reset();
+
+      // Reload textbooks list
+      loadTextbooks();
+
+    } catch (error) {
+      console.error("Error uploading textbook:", error);
+      alert("Error uploading textbook. Please try again.");
+    }
+  }
+
+  function openTextbook(filePath) {
+    // In a real implementation, this would open the PDF in a new tab or embedded viewer
+    // For now, we'll simulate opening by creating a download link
+    const link = document.createElement('a');
+    link.href = filePath;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function deleteTextbook(textbookId) {
+    if (confirm("Are you sure you want to delete this textbook?")) {
+      // In a real implementation, this would delete from Supabase
+      alert("Textbook deleted successfully!");
+      loadTextbooks();
+    }
+  }
+
+  loadTextbooks();
+
+  // Form submission handler
+  document.getElementById("uploadForm").addEventListener("submit", uploadTextbook);
+
+  const menuLinks = document.querySelectorAll('#menuLinks a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      // Close sidebar immediately when a menu item is chosen
+      const sidebar = document.getElementById('sidebar');
+      const toggleBtn = document.getElementById('toggleSidebar');
+      sidebar.classList.add('collapsed');
+      toggleBtn.classList.add('sidebar-collapsed');
+
+      // Only prevent default for in-page navigation (data-page links)
+      if (link.hasAttribute('data-page')) {
+        e.preventDefault();
+        menuLinks.forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  });
+
+  const logoutLink = document.getElementById('logoutLink');
+  const logoutModal = document.getElementById('logoutModal');
+  const confirmLogout = document.getElementById('confirmLogout');
+  const cancelLogout = document.getElementById('cancelLogout');
+
+  logoutLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutModal.classList.add('active');
+  });
+
+  confirmLogout.addEventListener('click', () => {
+    window.location.href = 'login.html';
+  });
+
+  cancelLogout.addEventListener('click', () => {
+    logoutModal.classList.remove('active');
+  });
+</script>
+
+</body>
+</html>

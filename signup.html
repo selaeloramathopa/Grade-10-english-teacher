@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Signup - English Learning System</title>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>Create Account</h2>
+
+  <input type="text" id="firstName" placeholder="First Name" />
+  <div class="field-error" id="firstNameError"></div>
+  <input type="text" id="lastName" placeholder="Surname" />
+  <div class="field-error" id="lastNameError"></div>
+  <input type="email" id="email" placeholder="Email" />
+
+  <select id="role">
+    <option value="" disabled selected>Choose your role</option>
+    <option value="learner">Learner</option>
+    <option value="teacher">Teacher</option>
+  </select>
+
+  <input type="password" id="password" placeholder="Password" />
+  <div class="password-checklist" id="passwordChecklist">
+    <div class="check-item" id="pwd-length"><span class="status">❌</span> At least 8 characters</div>
+    <div class="check-item" id="pwd-lower"><span class="status">❌</span> Lowercase letter</div>
+    <div class="check-item" id="pwd-upper"><span class="status">❌</span> Uppercase letter</div>
+    <div class="check-item" id="pwd-number"><span class="status">❌</span> Number</div>
+    <div class="check-item" id="pwd-symbol"><span class="status">❌</span> Symbol</div>
+  </div>
+  <input type="password" id="confirmPassword" placeholder="Confirm Password" />
+  <div class="field-error" id="confirmPasswordError"></div>
+
+  <button id="signupBtn">Sign Up</button>
+
+  <div class="message" id="message"></div>
+  <p class="alt">Already have an account? <a href="login.html">Log in</a></p>
+</div>
+
+<!-- ✅ JavaScript inside same file -->
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  // 🔑 Replace with your Supabase credentials
+  const supabaseUrl = "https://drgjjjlseafzsacahokn.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2pqamxzZWFmenNhY2Fob2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTQ3MDksImV4cCI6MjA5MDI3MDcwOX0._1uHUCuRtHjSBSTjHOeB4vmcJ_LxirMAKXfVDKAzFK4";
+
+  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes("YOUR_SUPABASE") || supabaseKey.includes("YOUR_SUPABASE")) {
+    alert("Please set supabaseUrl / supabaseKey in signup.html before testing.");
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const signupBtn = document.getElementById("signupBtn");
+  const messageDiv = document.getElementById("message");
+  const firstNameInput = document.getElementById("firstName");
+  const lastNameInput = document.getElementById("lastName");
+  const firstNameError = document.getElementById("firstNameError");
+  const lastNameError = document.getElementById("lastNameError");
+  const passwordInput = document.getElementById("password");
+  const confirmPasswordInput = document.getElementById("confirmPassword");
+  const confirmPasswordError = document.getElementById("confirmPasswordError");
+  const passwordChecklist = document.getElementById("passwordChecklist");
+
+  const passwordRules = [
+    { id: "pwd-length", test: (value) => value.length >= 8 },
+    { id: "pwd-lower", test: (value) => /[a-z]/.test(value) },
+    { id: "pwd-upper", test: (value) => /[A-Z]/.test(value) },
+    { id: "pwd-number", test: (value) => /\d/.test(value) },
+    { id: "pwd-symbol", test: (value) => /[^A-Za-z0-9]/.test(value) }
+  ];
+
+  const showDigitError = (field, errorField) => {
+    const sanitized = field.value.replace(/[0-9]/g, "");
+    if (sanitized !== field.value) {
+      field.value = sanitized;
+      errorField.textContent = `❌ ${field.placeholder} cannot contain numbers.`;
+      return true;
+    }
+    errorField.textContent = "";
+    return false;
+  };
+
+  const clearFieldErrors = () => {
+    firstNameError.textContent = "";
+    lastNameError.textContent = "";
+    confirmPasswordError.textContent = "";
+  };
+
+  firstNameInput.addEventListener("input", () => {
+    showDigitError(firstNameInput, firstNameError);
+  });
+
+  lastNameInput.addEventListener("input", () => {
+    showDigitError(lastNameInput, lastNameError);
+  });
+
+  const validateConfirmPassword = () => {
+    const password = passwordInput.value;
+    const confirm = confirmPasswordInput.value;
+    if (!confirm) {
+      confirmPasswordError.textContent = "";
+      return false;
+    }
+    if (password !== confirm) {
+      confirmPasswordError.textContent = "❌ Passwords do not match.";
+      return false;
+    }
+    confirmPasswordError.textContent = "";
+    return true;
+  };
+
+  const updatePasswordChecklist = (value) => {
+    return passwordRules.every((rule) => {
+      const item = document.getElementById(rule.id);
+      const passed = rule.test(value);
+      item.classList.toggle("passed", passed);
+      item.querySelector(".status").textContent = passed ? "✅" : "❌";
+      return passed;
+    });
+  };
+
+  const resetPasswordChecklist = () => {
+    passwordRules.forEach((rule) => {
+      const item = document.getElementById(rule.id);
+      item.classList.remove("passed");
+      item.querySelector(".status").textContent = "❌";
+    });
+  };
+
+  passwordInput.addEventListener("input", () => {
+    const value = passwordInput.value;
+    if (value.length > 0) {
+      passwordChecklist.style.display = "block";
+      updatePasswordChecklist(value);
+    } else {
+      passwordChecklist.style.display = "none";
+      resetPasswordChecklist();
+    }
+    validateConfirmPassword();
+  });
+
+  confirmPasswordInput.addEventListener("input", validateConfirmPassword);
+
+  signupBtn.addEventListener("click", async () => {
+    clearFieldErrors();
+    const firstName = firstNameInput.value.trim();
+    const lastName = lastNameInput.value.trim();
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+    const role = document.getElementById("role").value;
+    updatePasswordChecklist(password);
+    const passwordsMatch = validateConfirmPassword();
+    if (!passwordsMatch && confirmPassword) {
+      messageDiv.innerHTML = "❌ Passwords do not match.";
+      return;
+    }
+    // all accounts require admin approval before logging in
+    const approved = false;
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+    if (!firstName || !lastName || !email || !password || !confirmPassword || !role) {
+      messageDiv.innerHTML = "❌ Please fill all fields, including first name, surname, passwords, and role";
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      messageDiv.innerHTML = "❌ Password and confirm password must match.";
+      return;
+    }
+
+    if (!strongPassword.test(password)) {
+      messageDiv.innerHTML = "❌ Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.";
+      return;
+    }
+
+    signupBtn.disabled = true;
+    messageDiv.innerHTML = "⏳ Creating account...";
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const user = data.user;
+      if (!user || !user.id) {
+        throw new Error("Unable to create user. Please check your Supabase settings.");
+      }
+
+      const table = role === "learner" ? "learners" : "teachers";
+      const { error: dbError } = await supabase.from(table).insert([
+        {
+          id: user.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          approved: approved
+        }
+      ]);
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      await supabase.auth.signOut();
+      messageDiv.innerHTML = `✅ ${role === "learner" ? "Learner" : "Teacher"} account created! Please wait for admin approval before logging in.`;
+    } catch (err) {
+      const errorMessage = err?.message || String(err);
+      if (errorMessage.toLowerCase().includes("rate limit")) {
+        messageDiv.innerHTML = "❌ Email rate limit exceeded. Please wait a few minutes before trying again.";
+      } else {
+        messageDiv.innerHTML = "❌ " + errorMessage;
+      }
+    } finally {
+      signupBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
