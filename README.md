@@ -39,7 +39,7 @@ The application was developed using **HTML**, **CSS**, **JavaScript**, and **Sup
 
 ### Home Page
 
-![welcomepage](screenshots/Welcomepage.png)
+![welcomepage](screenshots/welcomepage.png)
 
 ### Login Page
 
