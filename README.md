@@ -109,7 +109,7 @@ Supabase is used for:
 
 Visit the live website:
 
-**https://selaeloramathopa.github.io/Grade-10-English-Teacher/**
+**https://selaeloramathopa.github.io/Grade-10-english-teacher/**
 
 ## Future Improvements
 
